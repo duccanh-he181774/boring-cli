@@ -11,12 +11,10 @@ CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
 
 def ensure_config_dir() -> None:
-    """Ensure the config directory exists."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_config() -> dict:
-    """Load configuration from file."""
     if not CONFIG_FILE.exists():
         return {}
     with open(CONFIG_FILE, "r") as f:
@@ -24,25 +22,21 @@ def load_config() -> dict:
 
 
 def save_config(config: dict) -> None:
-    """Save configuration to file."""
     ensure_config_dir()
     with open(CONFIG_FILE, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
 
 def get_value(key: str) -> Optional[str]:
-    """Get a configuration value."""
     return load_config().get(key)
 
 
 def set_value(key: str, value: str) -> None:
-    """Set a configuration value."""
     config = load_config()
     config[key] = value
     save_config(config)
 
 
-# Convenience accessors
 def get_server_url() -> Optional[str]:
     return get_value("server_url")
 
@@ -100,69 +94,56 @@ def set_lark_token(token: str) -> None:
 
 
 def get_backend_type() -> Optional[str]:
-    """Get configured backend type ('lark' or 'kanban')."""
-    return get_value("backend_type") or "lark"  # Default to lark for backward compat
+    return get_value("backend_type") or "lark"
 
 
 def set_backend_type(backend_type: str) -> None:
-    """Set backend type."""
     if backend_type not in ["lark", "kanban"]:
         raise ValueError(f"Invalid backend type: {backend_type}")
     set_value("backend_type", backend_type)
 
 
 def get_kanban_base_url() -> Optional[str]:
-    """Get Kanban base URL."""
     return get_value("kanban_base_url")
 
 
 def set_kanban_base_url(url: str) -> None:
-    """Set Kanban base URL."""
     set_value("kanban_base_url", url)
 
 
 def get_kanban_api_key() -> Optional[str]:
-    """Get Kanban API key."""
     return get_value("kanban_api_key")
 
 
 def set_kanban_api_key(key: str) -> None:
-    """Set Kanban API key."""
     set_value("kanban_api_key", key)
 
 
 def get_kanban_board_id() -> Optional[str]:
-    """Get Kanban board ID."""
     return get_value("kanban_board_id")
 
 
 def set_kanban_board_id(board_id: str) -> None:
-    """Set Kanban board ID."""
     set_value("kanban_board_id", board_id)
 
 
 def get_kanban_list_id() -> Optional[str]:
-    """Get Kanban list/column ID for in-progress tasks."""
     return get_value("kanban_list_id")
 
 
 def set_kanban_list_id(list_id: str) -> None:
-    """Set Kanban list/column ID for in-progress tasks."""
     set_value("kanban_list_id", list_id)
 
 
 def get_kanban_done_list_id() -> Optional[str]:
-    """Get Kanban list/column ID for done/solved tasks."""
     return get_value("kanban_done_list_id")
 
 
 def set_kanban_done_list_id(list_id: str) -> None:
-    """Set Kanban list/column ID for done/solved tasks."""
     set_value("kanban_done_list_id", list_id)
 
 
 def is_configured() -> bool:
-    """Check if the CLI is properly configured based on backend type."""
     config_data = load_config()
     backend_type = config_data.get("backend_type", "lark")
     bugs_dir = config_data.get("bugs_dir")
