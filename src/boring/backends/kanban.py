@@ -105,18 +105,17 @@ class KanbanBackend(BackendClient):
         except Exception:
             return None
 
-    def _fetch_and_process_activities(self, card_id: str) -> tuple[List[Dict[str, Any]], str, List[Dict[str, str]]]:
+    def _fetch_and_process_activities(self, card_id: str) -> tuple[List[Dict[str, Any]], str]:
         try:
             activities = self._post("/api/kanban.cards.activities", {"cardId": card_id})
             if not activities:
-                return [], "", []
+                return [], ""
         except Exception as e:
-            return [], "", []
+            return [], ""
 
         comments_list = []
         markdown_parts = []
         sorted_activities = sorted(activities, key=lambda x: x.get("createdAt", ""))
-        related_docs_dict = {}
 
         for activity in sorted_activities:
             name = activity.get("name")
@@ -138,29 +137,12 @@ class KanbanBackend(BackendClient):
                 })
 
                 markdown_parts.append(self._format_comment_node(content, author, created_at, replies, level=0))
-            
-            elif name == "kanban_cards.add_document":
-                doc_id = data.get("documentId")
-                doc_title = data.get("documentTitle")
-                
-                if doc_id and doc_title:
-                    doc_url_id = self._fetch_document_info(doc_id)
-                    related_docs_dict[doc_id] = {
-                        "title": doc_title,
-                        "urlId": doc_url_id
-                    }
-                    
-            elif name == "kanban_cards.remove_document":
-                doc_id = data.get("documentId")
-                if doc_id in related_docs_dict:
-                    del related_docs_dict[doc_id]
 
         comments_markdown = ""
         if markdown_parts:
             comments_markdown = "\n\n---\n\n## Comments\n\n" + "\n".join(reversed(markdown_parts))
             
-        related_docs = [{"id": k, "title": v["title"], "urlId": v.get("urlId")} for k, v in related_docs_dict.items()]
-        return comments_list, comments_markdown, related_docs
+        return comments_list, comments_markdown
 
     def _format_comment_node(self, content: str, author: str, created_at: str, replies: List[Dict[str, Any]], level: int) -> str:
         indent = "  " * level
@@ -241,13 +223,14 @@ class KanbanBackend(BackendClient):
 
     def get_task_detail(self, task_id: str) -> TaskItem:
         card_detail = self._post("/api/kanban.cards.info", {"id": task_id})
-        comments, comments_markdown, related_docs = self._fetch_and_process_activities(task_id)
+        comments, comments_markdown = self._fetch_and_process_activities(task_id)
 
         title = card_detail.get("title", "")
         description = card_detail.get("description", "")
         priority_str = self._map_priority(card_detail)
         due_date = card_detail.get("dueDate")
         card_labels = card_detail.get("tags", [])
+        related_docs = card_detail.get("relatedDocuments", [])
 
         full_markdown = f"# {title}\n"
         full_markdown += "=" * (len(title) + 2) + "\n\n"
@@ -270,8 +253,8 @@ class KanbanBackend(BackendClient):
         if related_docs:
             full_markdown += "\n---\n\n## Related Documents\n\n"
             for doc in related_docs:
-                doc_url = generate_document_url(self.base_url, doc['title'], doc['id'], doc.get('urlId'))
-                full_markdown += f"- [{doc['title']}]({doc_url})\n"
+                doc_url = self.base_url + doc.get('url', '')
+                full_markdown += f"- [{doc.get('title', 'Untitled')}]({doc_url})\n"
 
         if comments_markdown:
             full_markdown += "\n" + comments_markdown.strip() + "\n"
